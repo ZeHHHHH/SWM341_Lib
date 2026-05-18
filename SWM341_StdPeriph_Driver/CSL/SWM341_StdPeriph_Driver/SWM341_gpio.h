@@ -14,18 +14,19 @@ void GPIO_Init(GPIO_TypeDef * GPIOx, uint32_t n, uint32_t dir, uint32_t pull_up,
 #define GPIO_INIT(GPIOx, n, mode)  GPIO_Init(GPIOx, n, (mode & 1) ? 1 : 0, (mode & 2) ? 1 : 0, (mode & 4) ? 1 : 0, (mode & 8) ? 1 : 0)
 
 
-void GPIO_WriteBit(GPIO_TypeDef * GPIOx, uint32_t n, uint32_t v);
+
 void GPIO_SetBit(GPIO_TypeDef * GPIOx, uint32_t n);
 void GPIO_ClrBit(GPIO_TypeDef * GPIOx, uint32_t n);
 void GPIO_InvBit(GPIO_TypeDef * GPIOx, uint32_t n);
 uint32_t GPIO_GetBit(GPIO_TypeDef * GPIOx, uint32_t n);
 
-void GPIO_WriteBits(GPIO_TypeDef * GPIOx, uint32_t n, uint32_t w, uint32_t v);
 void GPIO_SetBits(GPIO_TypeDef * GPIOx, uint32_t n, uint32_t w);
 void GPIO_ClrBits(GPIO_TypeDef * GPIOx, uint32_t n, uint32_t w);
 void GPIO_InvBits(GPIO_TypeDef * GPIOx, uint32_t n, uint32_t w);
 uint32_t GPIO_GetBits(GPIO_TypeDef * GPIOx, uint32_t n, uint32_t w);
 
+void GPIO_WriteBit(GPIO_TypeDef * GPIOx, uint32_t n, uint32_t v);
+void GPIO_WriteBits(GPIO_TypeDef * GPIOx, uint32_t n, uint32_t w, uint32_t v);
 
 
 // for compatibility
