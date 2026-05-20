@@ -169,6 +169,8 @@ Reset_Handler:
     strlo   r0, [r2], #4
     blo    .Lbss_to_ram_loop
 
+    ldr    r0, =FLASH_Lock
+    blx    r0
     ldr    r0, =FPU_Enable
     blx    r0
     ldr    r0, =main
