@@ -28,10 +28,8 @@ uint32_t SysTick_Delayus(uint32_t us)
 }
 
 int main(void)
-{	
-	uint32_t  i;
-
-	for(i = 0; i < SystemCoreClock; i++) __NOP();	//防止无法更新程序
+{
+	SW_DelayMS(4000);	//防止无法更新程序
 
 	SystemInit();
 
@@ -44,10 +42,10 @@ int main(void)
 	//等待外振起振
 	SysTick_Delayus(6000);
 	
-	for(i = 0; i < SystemCoreClock; i++) __NOP();	//防止无法更新程序
-
+	SW_DelayMS(4000);	//防止无法更新程序
+	
 	TurnOffUSBPower();
-
+	
 	//等待USB关闭，需要等下6.5us以上，设置10us
 	SysTick_Delayus(10000);	
 
@@ -61,7 +59,6 @@ int main(void)
 					   
 	while(1==1)
 	{
-		
 		__disable_irq();       
 
 		switchTo20MHz();	  //休眠前，切换到 20MHz
@@ -79,7 +76,7 @@ int main(void)
 		__enable_irq();    
 
 		//切换到 PLL等待一下，看功耗变化
-		for(i = 0; i < SystemCoreClock/20; i++) __NOP();
+		SW_DelayMS(500);
 	}
 }
 

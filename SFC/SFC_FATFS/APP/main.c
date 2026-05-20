@@ -33,7 +33,7 @@ int main(void)
 	
 	SerialInit();
 	
-	for(int i = 0; i < SystemCoreClock/100; i++) __NOP();	// Wait for the SPI Flash to complete initialization
+	SW_DelayMS(500);	// Wait for the SPI Flash to complete initialization
 	
 	res = f_mount(&fatfs, "spi:", 1);
 	if(res == FR_NO_FILESYSTEM)

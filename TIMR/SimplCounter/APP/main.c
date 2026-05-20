@@ -16,7 +16,8 @@ int main(void)
 	while(1==1)
 	{
 		GPIO_InvBit(GPIOA, PIN0);
-		for(int i = 0; i < SystemCoreClock/64; i++) __NOP();
+		
+		SW_DelayMS(100);
 	}
 }
 

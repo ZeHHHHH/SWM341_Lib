@@ -21,7 +21,7 @@ int main(void)
 	
 	SerialInit();
 	
-	for(i = 0; i < SystemCoreClock/10; i++) __NOP();	// Wait for power to stabilize
+	SW_DelayMS(500);	// Wait for power to stabilize
 	
 	FLASH_Erase(EEPROM_ADDR);
 	

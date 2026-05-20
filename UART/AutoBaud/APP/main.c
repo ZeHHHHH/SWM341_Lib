@@ -55,7 +55,7 @@ int main(void)
 		printf("UART1 Baud Reg: %d\r\n", UART_GetBaudrate(UART1));
 		printf("UART2 Baud Reg: %d\r\n", UART_GetBaudrate(UART2));
 		
-		for(i = 0; i < SystemCoreClock/5; i++) __NOP();
+		SW_DelayMS(1000);
 	}
 }
 

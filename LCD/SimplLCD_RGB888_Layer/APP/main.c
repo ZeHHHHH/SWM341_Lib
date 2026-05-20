@@ -67,7 +67,7 @@ int main(void)
 			LCD_SetLayerPos(LCD, LCD_LAYER_1, (479 - 127)/8*i,       (479 - 127)/8*i + 127,       (271 - 127)/8*i,       (271 - 127)/8*i + 127);
 			LCD_SetLayerPos(LCD, LCD_LAYER_2, (479 - 127)/8*(8 - i), (479 - 127)/8*(8 - i) + 127, (271 - 127)/8*(8 - i), (271 - 127)/8*(8 - i) + 127);
 			
-			for(j = 0; j < SystemCoreClock/4; j++) __NOP();
+			SW_DelayMS(1000);
 		}
 	}
 }

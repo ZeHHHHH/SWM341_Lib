@@ -55,7 +55,7 @@ int main(void)
 		LCD_INTClr(LCD);
 		LCD_INTEn(LCD);
 		
-		for(int i = 0; i < SystemCoreClock / 100; i++) __NOP();
+		SW_DelayMS(200);
 	}
 }
 

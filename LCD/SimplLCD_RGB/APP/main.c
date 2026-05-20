@@ -63,7 +63,7 @@ int main(void)
 	{		
 		for(i = 0; i < 3; i++)
 		{
-			for(j = 0; j < SystemCoreClock/20; j++) __NOP();
+			SW_DelayMS(500);
 			
 			UG_FillFrame(60, 75, 200, 150, color[i]);
 		}

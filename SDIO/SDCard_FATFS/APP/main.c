@@ -27,7 +27,7 @@ int main(void)
 	
 	SerialInit();
 	
-	for(int i = 0; i < SystemCoreClock/10; i++) __NOP();	// Wait for the SD card to complete initialization
+	SW_DelayMS(1000);	// Wait for the SD card to complete initialization
 	
 	res = f_mount(&fatfs, "sd:", 1);
 	if(res != FR_OK)

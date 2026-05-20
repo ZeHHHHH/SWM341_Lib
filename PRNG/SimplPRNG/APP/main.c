@@ -23,7 +23,7 @@ int main(void)
 		while((SYS->PRNGCR & SYS_PRNGCR_RDY_Msk) == 0) __NOP();
 		printf("PRNGDL: %08X, PRNGDH: %08X\n", SYS->PRNGDL, SYS->PRNGDH);
 		
-		for(i = 0; i < SystemCoreClock/8; i++) __NOP();
+		SW_DelayMS(500);
 	}
 }
 

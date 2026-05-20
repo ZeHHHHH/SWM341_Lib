@@ -19,7 +19,7 @@ int main(void)
  	while(1==1)
  	{
  		GPIO_InvBit(GPIOA, PIN5);
- 		for(i = 0; i < SystemCoreClock/5; i++) __NOP();
+ 		SW_DelayMS(1000);
 		
    		printf("Hi, World!\r\n");
 		

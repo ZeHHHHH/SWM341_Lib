@@ -102,7 +102,7 @@ int main(void)
 		
 		PWMG->RELOADEN = 0x3F;
 		
-		for(int i = 0; i < SystemCoreClock / 32; i++) __NOP();
+		SW_DelayMS(100);
 	}
 }
 

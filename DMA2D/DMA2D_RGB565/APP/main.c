@@ -59,8 +59,6 @@ void DMA2D_Handler(void)
 
 void test_PixelFill(void)
 {
-	uint32_t i;
-	
 	/* full screen fill blue */
 	outLayer.Address = (uint32_t)LCD_Buffer;
 	outLayer.LineCount = LCD_VDOT;
@@ -71,7 +69,7 @@ void test_PixelFill(void)
 	
 	while(DMA2D_IsBusy()) __NOP();
 	
-	for(i = 0; i < SystemCoreClock/8; i++) __NOP();
+	SW_DelayMS(500);
 	
 	/* Draw a 150*150 green square in the upper left corner */
 	outLayer.Address = (uint32_t)LCD_Buffer;
@@ -83,7 +81,7 @@ void test_PixelFill(void)
 	
 	while(DMA2D_IsBusy()) __NOP();
 	
-	for(i = 0; i < SystemCoreClock/8; i++) __NOP();
+	SW_DelayMS(500);
 	
 	/* Draw a 150*150 red square in the lower right corner */
 	outLayer.Address = (uint32_t)LCD_Buffer + (LCD_HDOT * (LCD_VDOT - 150) + (LCD_HDOT - 150)) * 2;
@@ -95,14 +93,12 @@ void test_PixelFill(void)
 	
 	while(DMA2D_IsBusy()) __NOP();
 	
-	for(i = 0; i < SystemCoreClock/8; i++) __NOP();
+	SW_DelayMS(500);
 }
 
 
 void test_PixelMove(void)
 {
-	uint32_t i;
-	
 	fgLayer.Address = (uint32_t)gImage_Synwit128;
 	fgLayer.LineOffset = 0;
 	fgLayer.ColorMode = DMA2D_FMT_RGB565;
@@ -116,7 +112,7 @@ void test_PixelMove(void)
 	
 	while(DMA2D_IsBusy()) __NOP();
 	
-	for(i = 0; i < SystemCoreClock/8; i++) __NOP();
+	SW_DelayMS(500);
 	
 	/* Draw a 128*128 picture in the lower right corner */
 	outLayer.Address = (uint32_t)LCD_Buffer + (LCD_HDOT * (LCD_VDOT - 128) + (LCD_HDOT - 128)) * 2;
@@ -127,7 +123,7 @@ void test_PixelMove(void)
 	
 	while(DMA2D_IsBusy()) __NOP();
 	
-	for(i = 0; i < SystemCoreClock/8; i++) __NOP();
+	SW_DelayMS(500);
 }
 
 

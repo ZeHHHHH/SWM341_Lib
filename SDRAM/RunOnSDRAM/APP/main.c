@@ -25,11 +25,11 @@ int main(void)
 	{
 		led_switch(1);
 		
-		for(int i = 0; i < SystemCoreClock/8; i++) __NOP();
+		SW_DelayMS(500);
 		
 		led_switch(0);
 		
-		for(int i = 0; i < SystemCoreClock/8; i++) __NOP();
+		SW_DelayMS(500);
 	}
 }
 

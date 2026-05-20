@@ -33,7 +33,7 @@ int main(void)
 			ADC_Result[i] = val;
 		}
 		
-		for(i = 0; i < SystemCoreClock/10000; i++) __NOP();
+		SW_DelayUS(500);
 	}
 }
 

@@ -33,7 +33,7 @@ int main(void)
 			n = USBH_CDC_Send((uint8_t *)strHi, strlen(strHi));
 		} while(n == 0);
 		
-		for(uint32_t i = 0; i < SystemCoreClock/2; i++) __NOP();
+		SW_DelayMS(2000);
 #else
 		memset(rxBuff, 0x00, 128);
 		n = USBH_CDC_Read((uint8_t *)rxBuff, 128-1);

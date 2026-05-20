@@ -31,7 +31,7 @@ int main(void)
 	while(1==1)
 	{
 		GPIO_SetBit(GPIOA, PIN9);					// turn on the LED
-		for(i = 0; i < SystemCoreClock/4; i++) __NOP();
+		SW_DelayMS(1000);
 		GPIO_ClrBit(GPIOA, PIN9);					// turn off the LED
 		
 		SYS->SLEEP |= (1 << SYS_SLEEP_STOP_Pos);	// enter STOP mode

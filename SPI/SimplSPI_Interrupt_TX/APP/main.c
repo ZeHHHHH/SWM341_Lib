@@ -50,7 +50,7 @@ int main(void)
 	{
 		SPI_Master_Send(txbuff, 16);
 		
-		for(int i = 0; i < SystemCoreClock/100; i++) __NOP();
+		SW_DelayMS(100);
 	}
 }
 

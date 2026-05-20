@@ -32,7 +32,7 @@ int main(void)
 //		printf("ACMP1 OUT = %d\r\n", (SYS->ACMPSR & SYS_ACMPSR_CMP1OUT_Msk) ? 1 : 0);
 //		printf("ACMP2 OUT = %d\r\n", (SYS->ACMPSR & SYS_ACMPSR_CMP2OUT_Msk) ? 1 : 0);
 		
-		for(int i = 0; i < SystemCoreClock/100; i++) __NOP();
+		SW_DelayMS(100);
 	}
 }
 

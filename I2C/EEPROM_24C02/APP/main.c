@@ -96,7 +96,7 @@ int main(void)
 
 nextloop:
 		I2C_Stop(I2C0, 1);
-		for(i = 0; i < SystemCoreClock/3; i++) __NOP();
+		SW_DelayMS(2000);
 	}
 }
 

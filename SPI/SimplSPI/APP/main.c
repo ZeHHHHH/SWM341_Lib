@@ -46,11 +46,11 @@ int main(void)
 			
 			printf("rxdata: 0x%X\r\n", rxdata);
 			
-			for(i = 0; i < SystemCoreClock/50; i++);
+			SW_DelayMS(100);
 		}
 		SPI0_CS_High();
 		
-		for(i = 0; i < SystemCoreClock/10; i++) __NOP();
+		SW_DelayMS(500);
 	}
 }
 

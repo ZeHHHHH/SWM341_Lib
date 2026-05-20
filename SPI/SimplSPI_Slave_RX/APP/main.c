@@ -39,7 +39,7 @@ int main(void)
 		for(i = 0; i < 12000; i++) __NOP();		// Although TX FIFO is empty, the last data is still in the TX shift register and needs to wait for it to be sent out
 		SPI0_CS_High();
 		
-		for(i = 0; i < SystemCoreClock/4; i++) __NOP();
+		SW_DelayMS(1000);
 	}
 }
 
