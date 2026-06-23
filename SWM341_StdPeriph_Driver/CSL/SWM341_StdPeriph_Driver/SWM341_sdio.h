@@ -141,8 +141,8 @@ typedef struct
 extern SD_CardInfo SD_cardInfo;
 
 uint32_t SDIO_Init(uint32_t freq);
-uint32_t SDIO_BlockWrite(uint32_t block_addr, uint32_t buff[]);
-uint32_t SDIO_BlockRead(uint32_t block_addr, uint32_t buff[]);
+#define SDIO_BlockWrite(block_addr, buff)  SDIO_MultiBlockWrite(block_addr, 1, buff)
+#define SDIO_BlockRead(block_addr, buff)   SDIO_MultiBlockRead(block_addr, 1, buff)
 
 uint32_t SDIO_MultiBlockWrite(uint32_t block_addr, uint16_t block_cnt, uint32_t buff[]);
 uint32_t SDIO_MultiBlockRead(uint32_t block_addr, uint16_t block_cnt, uint32_t buff[]);
@@ -173,5 +173,41 @@ uint32_t SDIO_IO_BlockRead(uint8_t func, uint32_t addr, uint8_t addrInc, uint32_
 uint32_t SDIO_IO_MultiBlockWrite(uint8_t func, uint32_t addr, uint8_t addrInc, uint32_t buff[], uint16_t block_count);
 uint32_t SDIO_IO_MultiBlockRead(uint8_t func, uint32_t addr, uint8_t addrInc, uint32_t buff[], uint16_t block_count);
 
+/* Interrupt Type */
+#define SDIO_IT_CMDDONE			(1 << 0)	// Command Complete
+#define SDIO_IT_TRXDONE			(1 << 1)	// Transfer Complete
+#define SDIO_IT_BLKGAP			(1 << 2)	// Block Gap Event
+#define SDIO_IT_DMADONE			(1 << 3)	// DMA Transfer Complete
+#define SDIO_IT_BUFWRRDY		(1 << 4)	// Buffer Write Ready
+#define SDIO_IT_BUFRDRDY		(1 << 5)	// Buffer Read Ready
+
+#define SDIO_IT_CARDINSR		(1 << 6)	// Card Insertion
+#define SDIO_IT_CARDRMOV		(1 << 7)	// Card Removal
+#define SDIO_IT_CARD			(1 << 8)	// Card Interrupt(Insertion or Removal)
+
+#define SDIO_IT_ERR             (1 << 15)	// Error Interrupt
+#define SDIO_IT_ERR_CMDTIMEOUT  (1 << 16)	// Command Timeout Error
+#define SDIO_IT_ERR_CMDCRC		(1 << 17)	// Command CRC Error
+#define SDIO_IT_ERR_CMDEND		(1 << 18)	// Command End Bit Error
+#define SDIO_IT_ERR_CMDIDX		(1 << 19)	// Command Index Error
+#define SDIO_IT_ERR_DATTIMEOUT	(1 << 20)	// Data Timeout Error
+#define SDIO_IT_ERR_DATCRC		(1 << 21)	// Data CRC Error
+#define SDIO_IT_ERR_DATEND		(1 << 22)	// Data End Error
+#define SDIO_IT_ERR_CURLIM		(1 << 23)	// Current Limit Error
+#define SDIO_IT_ERR_CMD12	    (1 << 24)	// Auto CMD12 Error
+#define SDIO_IT_ERR_DMA		    (1 << 25)	// DMA Error
+#define SDIO_IT_ERR_RESP		(1 << 28)	// Response Error
+
+/* CMD12 Error Type */
+#define SDIO_CMD12_ERR_NE	    (1 << 0)	// Auto CMD12 not Executed
+#define SDIO_CMD12_ERR_TO	    (1 << 1)	// Auto CMD12 Timeout Error
+#define SDIO_CMD12_ERR_CRC	    (1 << 2)	// Auto CMD12 CRC Error
+#define SDIO_CMD12_ERR_END	    (1 << 3)	// Auto CMD12 End Bit Error
+#define SDIO_CMD12_ERR_INDEX	(1 << 4)    // Auto CMD12 Index Error
+
+void SDIO_INTEn(uint32_t it);
+void SDIO_INTDis(uint32_t it);
+void SDIO_INTClr(uint32_t it);
+uint32_t SDIO_INTStat(uint32_t it);
 
 #endif

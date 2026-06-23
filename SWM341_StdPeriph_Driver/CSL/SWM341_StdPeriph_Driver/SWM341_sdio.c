@@ -25,20 +25,19 @@
 #endif
 
 
-#define wait_while(condition) {					\
-		uint32_t time = SDIO_TIMEOUT;			\
-												\
-		while(condition) {						\
-			if(SDIO_TIMEOUT && (--time == 0))	\
-				return SD_RES_TIMEOUT;			\
-		}										\
+#define wait_while(condition, ...) {                     \
+		for (uint32_t time = SDIO_TIMEOUT; condition;) { \
+			if(SDIO_TIMEOUT && (--time == 0))	         \
+				return SD_RES_TIMEOUT;			         \
+            __VA_ARGS__                                  \
+		}										         \
 	}
 
-
+#define SDIO_IT_MASK  0x13FF81FF //valid bit: [0~8], [15~25], 28
 
 SD_CardInfo SD_cardInfo;
 
-	
+
 /*******************************************************************************************************************************
 * @brief	SDIO init
 * @param	freq is SDIO clock frequency to use
@@ -50,7 +49,7 @@ uint32_t SDIO_Init(uint32_t freq)
 	uint32_t resp, resps[4];
 	
 	SYS->CLKSEL &= ~SYS_CLKSEL_SDIO_Msk;
-	if(SystemCoreClock > 80000000)		// SDIO clock frequency must be less than 52MHz
+	if(SystemCoreClock > (104 * 1000 * 1000))		// SDIO clock frequency must be less than 52MHz
 		SYS->CLKSEL |= (2 << SYS_CLKSEL_SDIO_Pos);	// SDCLK = SYSCLK / 4
 	else
 		SYS->CLKSEL |= (0 << SYS_CLKSEL_SDIO_Pos);	// SDCLK = SYSCLK / 2
@@ -74,8 +73,9 @@ uint32_t SDIO_Init(uint32_t freq)
 	
 	for(int i = 0; i < CyclesPerUs * 10; i++) __NOP();
 	
-	SDIO->IM = 0xFFFFFFFF;
-	
+	SDIO->IM |= SDIO_IT_MASK;
+    SDIO_INTClr(SDIO_IT_MASK);
+    SDIO_INTDis(SDIO_IT_MASK);
 	
 	SDIO_SendCmd(SD_CMD_GO_IDLE_STATE, 0x00, SD_RESP_NO, 0);				// CMD0: GO_IDLE_STATE
 	SDIO_SendCmd(SD_CMD_GO_IDLE_STATE, 0x00, SD_RESP_NO, 0);
@@ -124,15 +124,21 @@ uint32_t SDIO_Init(uint32_t freq)
 	
 	if(SD_cardInfo.CardBlockSize < 0x200) return SD_RES_ERR;	// The driver supports read and write in 512 bytes only.
 	
-	
-	SDIO->CR2 &= ~(SDIO_CR2_SDCLKEN_Msk | SDIO_CR2_SDCLKDIV_Msk);
-	SDIO->CR2 |= (1 << SDIO_CR2_SDCLKEN_Pos) |
+	SDIO_SendCmd(SD_CMD_SEL_DESEL_CARD, SD_cardInfo.RCA << 16, SD_RESP_32b_busy, &resp);	// CMD7: Select the card and enter the Transfer mode from Standy mode
+    
+    /* >25MHz switch high speed */
+    if (freq > 25 * 1000 * 1000) {
+        res = SDIO_HighSpeed();
+        if (SD_RES_OK != res) {
+            return res;
+        }
+    }
+    
+	SDIO->CR2 &= ~(SDIO_CR2_SDCLKEN_Msk | SDIO_CR2_SDCLKDIV_Msk | SDIO_CR2_CLKEN_Msk | SDIO_CR2_CLKRDY_Msk);
+	SDIO->CR2 |= (1 << SDIO_CR2_SDCLKEN_Pos) | SDIO_CR2_CLKEN_Msk |
 				 (calcSDCLKDiv(freq) << SDIO_CR2_SDCLKDIV_Pos);	// Initialization is complete and SDCLK switches to high speed
 	
-	
-	SDIO_SendCmd(SD_CMD_SEL_DESEL_CARD, SD_cardInfo.RCA << 16, SD_RESP_32b_busy, &resp);	// CMD7: Select the card and enter the Transfer mode from Standy mode
-	SDIO->IF = SDIO_IF_TRXDONE_Msk;
-	
+	while((SDIO->CR2 & SDIO_CR2_CLKRDY_Msk) == 0) {}
 	
 	SDIO_SendCmd(SD_CMD_APP_CMD, SD_cardInfo.RCA << 16, SD_RESP_32b, &resp);
 	
@@ -146,35 +152,6 @@ uint32_t SDIO_Init(uint32_t freq)
 	SD_cardInfo.CardBlockSize = 512;
 	
 	SDIO->BLK = 512;
-	
-	return SD_RES_OK;
-}
-
-/*******************************************************************************************************************************
-* @brief	SDIO write single block to sdcard, 512 bytes per block
-* @param	block_addr is sdcard block address to write to
-* @param	buff is data to write to sdcard
-* @return	SD_RES_OK, SD_RES_ERR, SD_RES_TIMEOUT
-*******************************************************************************************************************************/
-uint32_t SDIO_BlockWrite(uint32_t block_addr, uint32_t buff[])
-{
-	uint32_t res, i;
-	uint32_t addr, resp;
-	
-	if(SD_cardInfo.CardType == SDIO_HIGH_CAPACITY_SD_CARD)	addr = block_addr;
-	else													addr = block_addr * 512;
-	
-	res = SDIO_SendCmdWithData(SD_CMD_WRITE_SINGLE_BLOCK, addr, SD_RESP_32b, &resp, 0, 1);
-	if(res != SD_RES_OK)
-		return res;
-	
-	wait_while((SDIO->IF & SDIO_IF_BUFWRRDY_Msk) == 0);
-    SDIO->IF = SDIO_IF_BUFWRRDY_Msk;		
-    
-    for(i = 0; i < 512/4; i++) SDIO->DATA = buff[i];
-	
-    wait_while((SDIO->IF & SDIO_IF_TRXDONE_Msk) == 0);
-	SDIO->IF = SDIO_IF_TRXDONE_Msk;
 	
 	return SD_RES_OK;
 }
@@ -194,20 +171,20 @@ uint32_t SDIO_MultiBlockWrite(uint32_t block_addr, uint16_t block_cnt, uint32_t 
 	if(SD_cardInfo.CardType == SDIO_HIGH_CAPACITY_SD_CARD)	addr = block_addr;
 	else													addr = block_addr * 512;
 	
-	res = SDIO_SendCmdWithData(SD_CMD_WRITE_MULT_BLOCK, addr, SD_RESP_32b, &resp, 0, block_cnt);
+	res = SDIO_SendCmdWithData((block_cnt > 1) ? SD_CMD_WRITE_MULT_BLOCK : SD_CMD_WRITE_SINGLE_BLOCK, addr, SD_RESP_32b, &resp, 0, block_cnt);
 	if(res != SD_RES_OK)
 		return res;
 	
 	for(i = 0; i < block_cnt; i++)
 	{
-		wait_while((SDIO->IF & SDIO_IF_BUFWRRDY_Msk) == 0);
-		SDIO->IF = SDIO_IF_BUFWRRDY_Msk;
+		wait_while(!SDIO_INTStat(SDIO_IT_BUFWRRDY));
+		SDIO_INTClr(SDIO_IT_BUFWRRDY);
 		
 		for(j = 0; j < 512/4; j++) SDIO->DATA = buff[i*(512/4) + j];
 	}
 	
-	wait_while((SDIO->IF & SDIO_IF_TRXDONE_Msk) == 0);
-	SDIO->IF = SDIO_IF_TRXDONE_Msk;
+	wait_while(!SDIO_INTStat(SDIO_IT_TRXDONE));
+	SDIO_INTClr(SDIO_IT_TRXDONE);
 	
 	return SD_RES_OK;
 }
@@ -229,41 +206,17 @@ uint32_t SDIO_DMABlockWrite(uint32_t block_addr, uint16_t block_cnt, uint32_t bu
 	
 	SDIO->DMA_MEM_ADDR = (uint32_t) buff;
 	
-	res = SDIO_SendCmdWithDataByDMA(SD_CMD_WRITE_MULT_BLOCK, addr, SD_RESP_32b, &resp, 0, block_cnt);
+	res = SDIO_SendCmdWithDataByDMA((block_cnt > 1) ? SD_CMD_WRITE_MULT_BLOCK : SD_CMD_WRITE_SINGLE_BLOCK, addr, SD_RESP_32b, &resp, 0, block_cnt);
 	if(res != SD_RES_OK)
 		return res;
 	
-	wait_while((SDIO->IF & SDIO_IF_TRXDONE_Msk) == 0);
-	SDIO->IF = SDIO_IF_TRXDONE_Msk;
-	
-	return SD_RES_OK;
-}
-
-/*******************************************************************************************************************************
-* @brief	SDIO read single block from sdcard, 512 bytes per block
-* @param	block_addr is sdcard block address to read from
-* @param	buff is used to save the read data
-* @return	SD_RES_OK, SD_RES_ERR, SD_RES_TIMEOUT
-*******************************************************************************************************************************/
-uint32_t SDIO_BlockRead(uint32_t block_addr, uint32_t buff[])
-{
-	uint32_t res, i;
-    uint32_t addr, resp;
-	
-	if(SD_cardInfo.CardType == SDIO_HIGH_CAPACITY_SD_CARD)	addr = block_addr;
-	else													addr = block_addr * 512;
-	
-	res = SDIO_SendCmdWithData(SD_CMD_READ_SINGLE_BLOCK, addr, SD_RESP_32b, &resp, 1, 1);
-	if(res != SD_RES_OK)
-		return res;
-	
-    wait_while((SDIO->IF & SDIO_IF_BUFRDRDY_Msk) == 0);
-	SDIO->IF = SDIO_IF_BUFRDRDY_Msk;
-    
-    for(i = 0; i < 512/4; i++) buff[i] = SDIO->DATA;
-    
-	wait_while((SDIO->IF & SDIO_IF_TRXDONE_Msk) == 0);
-	SDIO->IF = SDIO_IF_TRXDONE_Msk;
+    wait_while(!SDIO_INTStat(SDIO_IT_TRXDONE), 
+                    if (SDIO_INTStat(SDIO_IT_DMADONE)) { 
+                        SDIO_INTClr(SDIO_IT_DMADONE);
+                        SDIO->DMA_MEM_ADDR = SDIO->DMA_MEM_ADDR;
+                    }
+               );
+	SDIO_INTClr(SDIO_IT_TRXDONE | SDIO_IT_DMADONE);
 	
 	return SD_RES_OK;
 }
@@ -283,20 +236,20 @@ uint32_t SDIO_MultiBlockRead(uint32_t block_addr, uint16_t block_cnt, uint32_t b
 	if(SD_cardInfo.CardType == SDIO_HIGH_CAPACITY_SD_CARD)	addr = block_addr;
 	else													addr = block_addr * 512;
 	
-	res = SDIO_SendCmdWithData(SD_CMD_READ_MULT_BLOCK, addr, SD_RESP_32b, &resp, 1, block_cnt);
+	res = SDIO_SendCmdWithData((block_cnt > 1) ? SD_CMD_READ_MULT_BLOCK : SD_CMD_READ_SINGLE_BLOCK, addr, SD_RESP_32b, &resp, 1, block_cnt);
 	if(res != SD_RES_OK)
 		return res;
 	
 	for(i = 0; i < block_cnt; i++)
 	{
-		wait_while((SDIO->IF & SDIO_IF_BUFRDRDY_Msk) == 0);
-		SDIO->IF = SDIO_IF_BUFRDRDY_Msk;
+		wait_while(!SDIO_INTStat(SDIO_IT_BUFRDRDY));
+		SDIO_INTClr(SDIO_IT_BUFRDRDY);
 		
 		for(j = 0; j < 512/4; j++) buff[i*(512/4) + j] = SDIO->DATA;
 	}
 	
-	wait_while((SDIO->IF & SDIO_IF_TRXDONE_Msk) == 0);
-	SDIO->IF = SDIO_IF_TRXDONE_Msk;
+	wait_while(!SDIO_INTStat(SDIO_IT_TRXDONE));
+	SDIO_INTClr(SDIO_IT_TRXDONE);
 	
 	return SD_RES_OK;
 }
@@ -318,13 +271,17 @@ uint32_t SDIO_DMABlockRead(uint32_t block_addr, uint16_t block_cnt, uint32_t buf
 	
 	SDIO->DMA_MEM_ADDR = (uint32_t)buff;
 	
-	res = SDIO_SendCmdWithDataByDMA(SD_CMD_READ_MULT_BLOCK, addr, SD_RESP_32b, &resp, 1, block_cnt);
+	res = SDIO_SendCmdWithDataByDMA((block_cnt > 1) ? SD_CMD_READ_MULT_BLOCK : SD_CMD_READ_SINGLE_BLOCK, addr, SD_RESP_32b, &resp, 1, block_cnt);
 	if(res != SD_RES_OK)
 		return res;
 	
-	wait_while((SDIO->IF & SDIO_IF_TRXDONE_Msk) == 0);
-	SDIO->IF = SDIO_IF_TRXDONE_Msk;
-	
+    wait_while(!SDIO_INTStat(SDIO_IT_TRXDONE), 
+                    if (SDIO_INTStat(SDIO_IT_DMADONE)) { 
+                        SDIO_INTClr(SDIO_IT_DMADONE);
+                        SDIO->DMA_MEM_ADDR = SDIO->DMA_MEM_ADDR;
+                    }
+               );
+	SDIO_INTClr(SDIO_IT_TRXDONE | SDIO_IT_DMADONE);
 	return SD_RES_OK;
 }
 
@@ -341,8 +298,10 @@ uint32_t SDIO_DMABlockRead(uint32_t block_addr, uint16_t block_cnt, uint32_t buf
 *******************************************************************************************************************************/
 uint32_t _SDIO_SendCmd(uint32_t cmd, uint32_t arg, uint32_t resp_type, uint32_t *resp_data, uint32_t have_data, uint32_t data_read, uint16_t block_cnt, uint32_t use_dma)
 {
-	SDIO->BLK &= ~SDIO_BLK_COUNT_Msk;
-	SDIO->BLK |= (block_cnt << SDIO_BLK_COUNT_Pos);
+    cmd &= (SDIO_CMD_CMDINDX_Msk >> SDIO_CMD_CMDINDX_Pos);
+    
+	SDIO->BLK &= ~(SDIO_BLK_COUNT_Msk | SDIO_BLK_DMA_SIZE_Msk);
+	SDIO->BLK |= (block_cnt << SDIO_BLK_COUNT_Pos) | (0 << SDIO_BLK_DMA_SIZE_Pos); 
 	
 	SDIO->ARG = arg;
 	SDIO->CMD = (cmd             << SDIO_CMD_CMDINDX_Pos)   |
@@ -357,26 +316,29 @@ uint32_t _SDIO_SendCmd(uint32_t cmd, uint32_t arg, uint32_t resp_type, uint32_t 
 				(((cmd == 53) ? 0 : (block_cnt > 1)) << SDIO_CMD_AUTOCMD12_Pos) |
 				(use_dma         << SDIO_CMD_DMAEN_Pos);
 	
-	while((SDIO->IF & SDIO_IF_CMDDONE_Msk) == 0)
+	while(!SDIO_INTStat(SDIO_IT_CMDDONE))
 	{
-		if(SDIO->IF & SDIO_IF_CMDTIMEOUT_Msk)
+		if(SDIO_INTStat(SDIO_IT_ERR_CMDTIMEOUT))
 		{
-			SDIO->IF = SDIO_IF_CMDTIMEOUT_Msk;
+			SDIO_INTClr(SDIO_IT_ERR_CMDTIMEOUT);
 			
 			return SD_RES_TIMEOUT;
 		}
-		else if(SDIO->IF & SDIO_IF_ERROR_Msk)
+		else if(SDIO_INTStat(SDIO_IT_ERR))
 		{
-			SDIO->IF = 0xFFFFFFFF;
+			SDIO_INTClr(SDIO_IT_MASK);
 			
 			return SD_RES_ERR;
 		}
 	}
-	SDIO->IF = SDIO_IF_CMDDONE_Msk;
+	SDIO_INTClr(SDIO_IT_CMDDONE);
 	
-	if(resp_type == SD_RESP_32b)
+	if(resp_type == SD_RESP_32b || SD_RESP_32b_busy == resp_type)
 	{
 		resp_data[0] = SDIO->RESP[0];
+        if (SD_RESP_32b_busy == resp_type) {
+            while (SDIO->STAT & ((1 << 0) | (1 << 1) | (1 << 2))) {} //wait cmd/data line no busy
+        }
 	}
 	else if(resp_type == SD_RESP_128b)
 	{
@@ -640,13 +602,13 @@ uint32_t SDIO_HighSpeed(void)
 	if(res != SD_RES_OK)
 		return res;
 	
-    wait_while((SDIO->IF & SDIO_IF_BUFRDRDY_Msk) == 0);
-	SDIO->IF = SDIO_IF_BUFRDRDY_Msk;
+    wait_while(!SDIO_INTStat(SDIO_IT_BUFRDRDY));
+	SDIO_INTClr(SDIO_IT_BUFRDRDY);
     
     for(int i = 0; i < 512/8/4; i++) buff[i] = SDIO->DATA;
     
-	wait_while((SDIO->IF & SDIO_IF_TRXDONE_Msk) == 0);
-	SDIO->IF = SDIO_IF_TRXDONE_Msk;
+	wait_while(!SDIO_INTStat(SDIO_IT_TRXDONE));
+	SDIO_INTClr(SDIO_IT_TRXDONE);
 	
 	if((buff[4] & 0xF) != 1)
 		return SD_RES_ERR;
@@ -667,7 +629,7 @@ uint32_t SDIO_IO_Init(uint32_t freq, enum SDIO_bus_width w)
 	uint32_t resp, resps[4];
 	
 	SYS->CLKSEL &= ~SYS_CLKSEL_SDIO_Msk;
-	if(SystemCoreClock > 80000000)		// SDIO clock frequency must be less than 52MHz
+	if(SystemCoreClock > (104 * 1000 * 1000))		// SDIO clock frequency must be less than 52MHz
 		SYS->CLKSEL |= (2 << SYS_CLKSEL_SDIO_Pos);	// SDCLK = SYSCLK / 4
 	else
 		SYS->CLKSEL |= (0 << SYS_CLKSEL_SDIO_Pos);	// SDCLK = SYSCLK / 2
@@ -692,7 +654,7 @@ uint32_t SDIO_IO_Init(uint32_t freq, enum SDIO_bus_width w)
 	
 	for(int i = 0; i < CyclesPerUs * 10; i++) __NOP();
 	
-	SDIO->IM = 0xFFFFFFFF;
+	SDIO->IM |= SDIO_IT_MASK;
 	
 	return SD_RES_OK;
 }
@@ -772,13 +734,13 @@ uint32_t SDIO_IO_BlockWrite(uint8_t func, uint32_t addr, uint8_t addrInc, uint32
 	if(res != SD_RES_OK)
 		return res;
 	
-    wait_while((SDIO->IF & SDIO_IF_BUFWRRDY_Msk) == 0);
-    SDIO->IF = SDIO_IF_BUFWRRDY_Msk;		
+    wait_while(!SDIO_INTStat(SDIO_IT_BUFWRRDY));
+    SDIO_INTClr(SDIO_IT_BUFWRRDY);		
     
     for(i = 0; i < block_size/4; i++) SDIO->DATA = buff[i];
 	
-    wait_while((SDIO->IF & SDIO_IF_TRXDONE_Msk) == 0);
-	SDIO->IF = SDIO_IF_TRXDONE_Msk;
+    wait_while(!SDIO_INTStat(SDIO_IT_TRXDONE));
+	SDIO_INTClr(SDIO_IT_TRXDONE);
 	
 	return SD_RES_OK;
 }
@@ -810,13 +772,13 @@ uint32_t SDIO_IO_BlockRead(uint8_t func, uint32_t addr, uint8_t addrInc, uint32_
 	if(res != SD_RES_OK)
 		return res;
 	
-    wait_while((SDIO->IF & SDIO_IF_BUFRDRDY_Msk) == 0);
-	SDIO->IF = SDIO_IF_BUFRDRDY_Msk;
+    wait_while(!SDIO_INTStat(SDIO_IT_BUFRDRDY));
+	SDIO_INTClr(SDIO_IT_BUFRDRDY);
     
     for(i = 0; i < block_size/4; i++) buff[i] = SDIO->DATA;
     
-	wait_while((SDIO->IF & SDIO_IF_TRXDONE_Msk) == 0);
-	SDIO->IF = SDIO_IF_TRXDONE_Msk;
+	wait_while(!SDIO_INTStat(SDIO_IT_TRXDONE));
+	SDIO_INTClr(SDIO_IT_TRXDONE);
 	
 	return SD_RES_OK;
 }
@@ -850,14 +812,14 @@ uint32_t SDIO_IO_MultiBlockWrite(uint8_t func, uint32_t addr, uint8_t addrInc, u
 	
 	for(i = 0; i < block_count; i++)
 	{
-		wait_while((SDIO->IF & SDIO_IF_BUFWRRDY_Msk) == 0);
-		SDIO->IF = SDIO_IF_BUFWRRDY_Msk;
+		wait_while(!SDIO_INTStat(SDIO_IT_BUFWRRDY));
+		SDIO_INTClr(SDIO_IT_BUFWRRDY);
 		
 		for(j = 0; j < 512/4; j++) SDIO->DATA = buff[i*(512/4) + j];
 	}
 	
-    wait_while((SDIO->IF & SDIO_IF_TRXDONE_Msk) == 0);
-	SDIO->IF = SDIO_IF_TRXDONE_Msk;
+    wait_while(!SDIO_INTStat(SDIO_IT_TRXDONE));
+	SDIO_INTClr(SDIO_IT_TRXDONE);
 	
 	return SD_RES_OK;
 }
@@ -891,14 +853,34 @@ uint32_t SDIO_IO_MultiBlockRead(uint8_t func, uint32_t addr, uint8_t addrInc, ui
 	
 	for(i = 0; i < block_count; i++)
 	{
-		wait_while((SDIO->IF & SDIO_IF_BUFRDRDY_Msk) == 0);
-		SDIO->IF = SDIO_IF_BUFRDRDY_Msk;
+		wait_while(!SDIO_INTStat(SDIO_IT_BUFRDRDY));
+		SDIO_INTClr(SDIO_IT_BUFRDRDY);
 		
 		for(j = 0; j < 512/4; j++) buff[i*(512/4) + j] = SDIO->DATA;
 	}
     
-	wait_while((SDIO->IF & SDIO_IF_TRXDONE_Msk) == 0);
-	SDIO->IF = SDIO_IF_TRXDONE_Msk;
+	wait_while(!SDIO_INTStat(SDIO_IT_TRXDONE));
+	SDIO_INTClr(SDIO_IT_TRXDONE);
 	
 	return SD_RES_OK;
+}
+
+void SDIO_INTEn(uint32_t it)
+{
+    SDIO->IE |= it;
+}
+
+void SDIO_INTDis(uint32_t it)
+{
+    SDIO->IE &= ~it;
+}
+
+void SDIO_INTClr(uint32_t it)
+{
+    SDIO->IF |= it;
+}
+
+uint32_t SDIO_INTStat(uint32_t it)
+{
+    return SDIO->IF & it;
 }

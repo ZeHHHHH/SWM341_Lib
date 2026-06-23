@@ -2291,6 +2291,8 @@ typedef struct {
 
 #define SDIO_BLK_SIZE_Pos			0		// block size, 0x200 512 bytes, 0x400 1024 bytes
 #define SDIO_BLK_SIZE_Msk			(0xFFF << SDIO_BLK_SIZE_Pos)
+#define SDIO_BLK_DMA_SIZE_Pos		12		// DMA transfer buffer size, 0x0 4KB, 0x1 8KB, 0x2 16KB, ...
+#define SDIO_BLK_DMA_SIZE_Msk		(0x7 << SDIO_BLK_DMA_SIZE_Pos)
 #define SDIO_BLK_COUNT_Pos			16		// block count, 0 Stop Transfer, 1 1 block, 2 2 block, ...
 #define SDIO_BLK_COUNT_Msk			(0xFFF << SDIO_BLK_COUNT_Pos)
 
@@ -2372,15 +2374,15 @@ typedef struct {
 #define SDIO_IF_CMDCRCERR_Pos		17
 #define SDIO_IF_CMDCRCERR_Msk		(0x01 << SDIO_IF_CMDCRCERR_Pos)
 #define SDIO_IF_CMDENDERR_Pos		18
-#define SDIO_IF_CMDENDERR_Msk		(0x01 << SDIO_IF_CMDENDCERR_Pos)
+#define SDIO_IF_CMDENDERR_Msk		(0x01 << SDIO_IF_CMDENDERR_Pos)
 #define SDIO_IF_CMDIDXERR_Pos		19
-#define SDIO_IF_CMDIDXERR_Msk		(0x01 << SDIO_IF_CMDIDXCERR_Pos)
+#define SDIO_IF_CMDIDXERR_Msk		(0x01 << SDIO_IF_CMDIDXERR_Pos)
 #define SDIO_IF_DATTIMEOUT_Pos		20
 #define SDIO_IF_DATTIMEOUT_Msk		(0x01 << SDIO_IF_DATTIMEOUT_Pos)
 #define SDIO_IF_DATCRCERR_Pos		21
 #define SDIO_IF_DATCRCERR_Msk		(0x01 << SDIO_IF_DATCRCERR_Pos)
 #define SDIO_IF_DATENDERR_Pos		22
-#define SDIO_IF_DATENDERR_Msk		(0x01 << SDIO_IF_DATENDCERR_Pos)
+#define SDIO_IF_DATENDERR_Msk		(0x01 << SDIO_IF_DATENDERR_Pos)
 #define SDIO_IF_CURLIMERR_Pos		23
 #define SDIO_IF_CURLIMERR_Msk		(0x01 << SDIO_IF_CURLIMERR_Pos)
 #define SDIO_IF_CMD12ERR_Pos		24
@@ -2408,6 +2410,8 @@ typedef struct {
 #define SDIO_IE_CARDRMOV_Msk		(0x01 << SDIO_IE_CARDRMOV_Pos)
 #define SDIO_IE_CARD_Pos			8
 #define SDIO_IE_CARD_Msk			(0x01 << SDIO_IE_CARD_Pos)
+#define SDIO_IE_ERROR_Pos			15
+#define SDIO_IE_ERROR_Msk			(0x01 << SDIO_IE_ERROR_Pos)
 #define SDIO_IE_CMDTIMEOUT_Pos		16		// Command Timeout Error Status Enable
 #define SDIO_IE_CMDTIMEOUT_Msk		(0x01 << SDIO_IE_CMDTIMEOUT_Pos)
 #define SDIO_IE_CMDCRCERR_Pos		17		// Command CRC Error Status Enable
@@ -2449,6 +2453,8 @@ typedef struct {
 #define SDIO_IM_CARDRMOV_Msk		(0x01 << SDIO_IM_CARDRMOV_Pos)
 #define SDIO_IM_CARD_Pos			8
 #define SDIO_IM_CARD_Msk			(0x01 << SDIO_IM_CARD_Pos)
+#define SDIO_IM_ERROR_Pos			15
+#define SDIO_IM_ERROR_Msk			(0x01 << SDIO_IE_ERROR_Pos)
 #define SDIO_IM_CMDTIMEOUT_Pos		16
 #define SDIO_IM_CMDTIMEOUT_Msk		(0x01 << SDIO_IM_CMDTIMEOUT_Pos)
 #define SDIO_IM_CMDCRCERR_Pos		17
